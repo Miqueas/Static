@@ -5,7 +5,7 @@ local GetMT = getmetatable
 
 [DONE] (type)     @Type   ==> just @Type
 [IN PROCCESS] (struct)    @Type{} ==> a table of @Type
-[TODO] (return)   @Type() ==> a function that returns @Type
+[IN PROCCESS] (return)   @Type() ==> a function that returns @Type
 [DONE] (multiple) { ... } ==> can be multiple types
 
 ]]
@@ -70,21 +70,44 @@ function Typed:new(TDecl, Key, ...)
 
       self._Reg[Key] = {
         _type = self._Types[tstr],
-        _is = "table"
+        _is = "struct"
       }
 
       if #va == 1 and type(va[1]) == "table" then
         for k, v in pairs(va[1]) do
           if type(v) ~= self._Types[tstr] then
-            error("Key/index '" .. k .. "' don't match the type " .. tstr)
+            return error("Key/index '" .. k .. "' don't match the type " .. tstr)
           end
         end
 
         self._Reg[Key]._val = va[1]
       else
+        self._Reg[Key]._val = {}
+
+        for i, v in ipairs(va) do
+          if type(v) ~= self._Types[tstr] then
+            return error("Key/index '" .. i .. "' don't match the type " .. tstr)
+          else
+            table.insert(self._Reg[Key]._val, v)
+          end
+        end
       end
 
     elseif self:parse(TDecl) == "return" then
+      local tstr = TDecl:gsub("[%(%)]", "")
+
+      self._Reg[Key] = {
+        _type = self._Types[tstr],
+        _is = "return"
+      }
+
+      if type(va[1]) == "function" and type(va[1]()) == self._Types[tstr] then
+        self._Reg[Key]._val = va[1]
+      elseif type(va[1]) == "function" and type(va[1]()) ~= self._Types[tstr] then
+        return error("Return value don't match the type " .. tstr)
+      else
+        return error("Value isn't a function")
+      end
     end
 
   elseif type(TDecl) == "table" then
@@ -149,8 +172,16 @@ Typed = SetMT(Typed, {
 })
 
 -- Nice
-Typed("@Num{}", "nums", { 1, 2, 3, 4 })
-print(Typed.nums)
+Typed("@Str()", "fn1", function ()
+  return "Yes"
+end)
+
+print(Typed.fn1)
 
 -- Error
-Typed("@Str{}", "strings", { 'a', 'b', 'c', 4 })
+Typed("@Num()", "fn2", function ()
+  return "No"
+end)
+
+-- Never reached
+print(Typed.fn2)
