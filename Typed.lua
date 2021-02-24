@@ -164,25 +164,27 @@ local function Build_Return(T, F, ...)
   end
 end
 
--- local function Build_Multiple(Types, ...)
---   local match = false
---   local mult = {
---     _type = Types,
---     _is = "Multiple"
---   }
+local function Build_Multiple(Types, V)
+  local match = false
+  local mult = {
+    _type = Types,
+    _is = "Multiple"
+  }
 
---   for i, v in ipairs(Types) do
---     if type(va[1]) == self._Types[v] then
---       match = true
---     end
---   end
+  for _, t in ipairs(Types) do
+    if type(V) == _TTypes[t] then
+      match = true
+      break
+    end
+  end
 
---   if match then
---     self._Reg[Key]._val = va[1]
---   else
---     return error("Typed:new [ERROR] => Value don't match with any of specified types")
---   end
--- end
+  if match then
+    mult._val = V
+    return mult
+  else
+    return error("Typed:new [ERROR] => Value don't match with any of specified types")
+  end
+end
 
 function Typed:new(Dec, Key, ...)
   local va = { ... }
@@ -213,6 +215,8 @@ function Typed:new(Dec, Key, ...)
   elseif Parse(Dec) == "Return" then
     local fn   = table.remove(va, 1)
     _TReg[Key] = Build_Return(Dec, fn, Unpack(va))
+  elseif Parse(Dec) == "Multiple" then
+    _TReg[Key] = Build_Multiple(Dec, va[1])
   else
     return error("Typed:new [ERROR] => Bad type declaration: " .. Dec)
   end
@@ -241,6 +245,5 @@ Typed = SetMT(Typed, {
   __newindex = Typed.set
 })
 
-Typed('@Str', "name", "Jhon")
-Typed('@Num', "age", 35)
-print(Typed.name .. " is " .. Typed.age)
+Typed({ '@Str', '@Num' }, "ex", 20)
+print(Typed.ex)
