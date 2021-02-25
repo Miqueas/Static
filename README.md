@@ -1,6 +1,6 @@
 [![License][LicenseBadge]][licenseURL]
 
-# Typed
+# Static
 
 Basic static typing support library for Lua
 

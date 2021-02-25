@@ -2,6 +2,8 @@ local SetMT  = setmetatable
 local GetMT  = getmetatable
 local Unpack = table.unpack or unpack
 
+local ErrMsg = {}
+
 --[[ Spec:
 
   [DONE]    (Single)   @Type   ==> just @Type
@@ -298,7 +300,4 @@ Typed = SetMT(Typed, {
   __newindex = Typed.set
 })
 
-Typed({ '@Str', '@Num' }, "a", 0)
-print(Typed.a)
-Typed.a = "ª"
-print(Typed.a)
+return Typed
