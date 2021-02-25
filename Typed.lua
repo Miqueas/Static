@@ -7,7 +7,7 @@ local Unpack = table.unpack or unpack
   [DONE]    (Single)   @Type   ==> just @Type
   [WORKING] (Struct)   @Type{} ==> a table of @Type
   [WORKING] (Return)   @Type() ==> a function that returns @Type
-  [PENDING] (Multiple) { ... } ==> can be multiple types
+  [WORKING] (Multiple) { ... } ==> can be multiple types
 
 ]]
 
@@ -164,22 +164,39 @@ local function Build_Return(T, F, ...)
   end
 end
 
-local function Build_Multiple(Types, V)
+local function Build_Multiple(Types, ...)
+  local obj
+
+  local va    = { ... }
   local match = false
-  local mult = {
+  local mult  = {
     _type = Types,
     _is = "Multiple"
   }
 
   for _, t in ipairs(Types) do
-    if type(V) == _TTypes[t] then
+    if Parse(t) == "Single" and type(va[1]) == _TTypes[t] then
+      obj   = Build_Single(t, va[1])
       match = true
-      break
+
+    elseif Parse(t) == "Struct" and type(va[1]) == _TTypes[t] then
+      obj   = Build_Struct(t, ...)
+      match = true
+
+    elseif Parse(t) == "Return" and type(va[1]) == "function" then
+      local fn = table.remove(va, 1)
+      obj      = Build_Return(t, fn, Unpack(va))
+      match    = true
+
+    elseif Parse(t) == "Multiple" and type(va[1]) == _TTypes[t] then
+      obj   = Build_Multiple(t, va[1])
+      match = true
+
     end
   end
 
   if match then
-    mult._val = V
+    mult._val = obj._val
     return mult
   else
     return error("Typed:new [ERROR] => Value don't match with any of specified types")
@@ -245,5 +262,24 @@ Typed = SetMT(Typed, {
   __newindex = Typed.set
 })
 
-Typed({ '@Str', '@Num' }, "ex", 20)
-print(Typed.ex)
+-- Some basic tests
+Typed('@Str', "test_str", "")
+Typed('@Num', "test_num", 0)
+Typed('@Bool', "test_bool", true)
+Typed('@Func', "test_func", function () end)
+Typed('@Table', "test_table", {})
+Typed('@Thread', "test_thread", coroutine.create(function () end))
+
+Typed('@Str{}', "test_str_struct", { "" })
+Typed('@Num{}', "test_num_struct", { 0 })
+Typed('@Bool{}', "test_bool_struct", { true })
+Typed('@Func{}', "test_func_struct", { function () end })
+Typed('@Table{}', "test_table_struct", { {} })
+Typed('@Thread{}', "test_thread_struct", { coroutine.create(function () end) })
+
+Typed('@Str()', "test_str_return", function() return "" end)
+Typed('@Num()', "test_num_return", function() return 0 end)
+Typed('@Bool()', "test_bool_return", function() return true end)
+Typed('@Func()', "test_func_return", function() return function() end end)
+Typed('@Table()', "test_table_return", function() return {} end)
+Typed('@Thread()', "test_thread_return", function() return coroutine.create(function () end) end)
