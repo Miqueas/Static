@@ -265,11 +265,29 @@ Typed = SetMT(Typed, {
   __newindex = Typed.set
 })
 
--- Some basic tests
-Typed('@Str', "test_str", "")
-Typed('@Num', "test_num", 0)
-Typed('@Bool', "test_bool", true)
-Typed('@User', "test_user", io.stdin)
-Typed('@Func', "test_func", function () end)
-Typed('@Table', "test_table", {})
-Typed('@Thread', "test_thread", coroutine.create(function () end))
+-- Some tests for type declaration "Multiple".
+
+-- Typed don't allow have 2 values with the same identifier
+-- so, comment and uncomment to check if something is working
+-- properly!
+Typed({ '@Str', '@Str()', '@Str{}' }, "test_str_multiple", "")
+-- Typed({ '@Str', '@Str()', '@Str{}' }, "test_str_multiple", { "" })
+-- Typed({ '@Str', '@Str()', '@Str{}' }, "test_str_multiple", function() return '' end)
+Typed({ '@Num', '@Num()', '@Num{}' }, "test_num_multiple", 0)
+-- Typed({ '@Num', '@Num()', '@Num{}' }, "test_num_multiple", { 0 })
+-- Typed({ '@Num', '@Num()', '@Num{}' }, "test_num_multiple", function() return 0 end)
+Typed({ '@Bool', '@Bool()', '@Bool{}' }, "test_bool_multiple", true)
+-- Typed({ '@Bool', '@Bool()', '@Bool{}' }, "test_bool_multiple", { true })
+-- Typed({ '@Bool', '@Bool()', '@Bool{}' }, "test_bool_multiple", function() return true end)
+Typed({ '@User', '@User()', '@User{}' }, "test_user_multiple", io.stdin)
+-- Typed({ '@User', '@User()', '@User{}' }, "test_user_multiple", { io.stdin })
+-- Typed({ '@User', '@User()', '@User{}' }, "test_user_multiple", function() return io.stdin end)
+Typed({ '@Func', '@Func()', '@Func{}' }, "test_func_multiple", function() end)
+-- Typed({ '@Func', '@Func()', '@Func{}' }, "test_func_multiple", { function() end })
+-- Typed({ '@Func', '@Func()', '@Func{}' }, "test_func_multiple", function() return function() end end)
+Typed({ '@Table', '@Table()', '@Table{}' }, "test_table_multiple", {})
+-- Typed({ '@Table', '@Table()', '@Table{}' }, "test_table_multiple", { {} })
+-- Typed({ '@Table', '@Table()', '@Table{}' }, "test_table_multiple", function() return {} end)
+Typed({ '@Thread', '@Thread()', '@Thread{}' }, "test_thread_multiple", coroutine.create(function () end))
+-- Typed({ '@Thread', '@Thread()', '@Thread{}' }, "test_thread_multiple", { coroutine.create(function () end) })
+-- Typed({ '@Thread', '@Thread()', '@Thread{}' }, "test_thread_multiple", function() return coroutine.create(function () end) end)
