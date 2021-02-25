@@ -181,20 +181,20 @@ local function Build_Multiple(Types, ...)
     if Parse(t) == "Single" and type(va[1]) == _TTypes[t] then
       obj   = Build_Single(t, va[1])
       match = true
-
-    elseif Parse(t) == "Struct" and type(va[1]) == _TTypes[t] then
-      obj   = Build_Struct(t, ...)
+      break
+    elseif Parse(t) == "Struct" and type(va[1]) == "table" then
+      obj   = Build_Struct(t, va[1])
       match = true
-
+      break
     elseif Parse(t) == "Return" and type(va[1]) == "function" then
       local fn = table.remove(va, 1)
       obj      = Build_Return(t, fn, Unpack(va))
       match    = true
-
+      break
     elseif Parse(t) == "Multiple" and type(va[1]) == _TTypes[t] then
       obj   = Build_Multiple(t, va[1])
       match = true
-
+      break
     end
   end
 
@@ -273,19 +273,3 @@ Typed('@User', "test_user", io.stdin)
 Typed('@Func', "test_func", function () end)
 Typed('@Table', "test_table", {})
 Typed('@Thread', "test_thread", coroutine.create(function () end))
-
-Typed('@Str{}', "test_str_struct", { "" })
-Typed('@Num{}', "test_num_struct", { 0 })
-Typed('@Bool{}', "test_bool_struct", { true })
-Typed('@User{}', "test_user_struct", { io.stdin })
-Typed('@Func{}', "test_func_struct", { function () end })
-Typed('@Table{}', "test_table_struct", { {} })
-Typed('@Thread{}', "test_thread_struct", { coroutine.create(function () end) })
-
-Typed('@Str()', "test_str_return", function() return "" end)
-Typed('@Num()', "test_num_return", function() return 0 end)
-Typed('@Bool()', "test_bool_return", function() return true end)
-Typed('@User()', "test_user_return", function() return io.stdin end)
-Typed('@Func()', "test_func_return", function() return function() end end)
-Typed('@Table()', "test_table_return", function() return {} end)
-Typed('@Thread()', "test_thread_return", function() return coroutine.create(function () end) end)
