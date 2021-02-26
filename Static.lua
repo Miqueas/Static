@@ -9,6 +9,7 @@ local Err = {
     "Static [ERROR]: Length of argument #1 is 0",
     "Static [ERROR]: @Nil type isn't supported",
     "Static [ERROR]: Bad argument #2, @Str expected, got %s",
+    "Static [ERROR]: Length of argument #2 is 0",
     "Static [ERROR]: '%s' already exists",
     "Static [ERROR]: Bad argument #1, erroneous type declaration"
   },
@@ -190,7 +191,8 @@ function Static:new(Dec, Key, ...)
   assert(#Dec > 0, Err.New[2])
   assert(not Dec:match("[Nn]il"), Err.New[3])
   assert(type(Key) == "string", Err.New[4]:format(LTypes[type(Key)]))
-  assert(not Reg[Key], Err.New[5]:format(Key))
+  assert(#Key > 0, Err.New[5])
+  assert(not Reg[Key], Err.New[6]:format(Key))
   assert(#va > 0, Err.VarArgs)
 
   if Parse(Dec) == "Basic" then
@@ -202,7 +204,7 @@ function Static:new(Dec, Key, ...)
   elseif Parse(Dec) == "Mixed" then
     Reg[Key] = Build_Mixed(Dec, ...)
   else
-    return error(Err.New[6])
+    return error(Err.New[7])
   end
 end
 
