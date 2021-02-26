@@ -2,20 +2,20 @@ local SetMT  = setmetatable
 local GetMT  = getmetatable
 local Unpack = table.unpack or unpack
 
-local ErrMsg = {}
+--local ErrMsg = {}
 
 --[[ Spec:
 
-  [DONE]    (Single)   @Type   ==> just @Type
-  [WORKING] (Struct)   @Type{} ==> a table of @Type
-  [WORKING] (Return)   @Type() ==> a function that returns @Type
-  [WORKING] (Multiple) { ... } ==> can be multiple types
+  [DONE] (Single) @Type   ==> just @Type
+  [DONE] (Struct) @Type{} ==> a table of @Type
+  [DONE] (Return) @Type() ==> a function that returns @Type
+  [DONE] (Mixed)  { ... } ==> can be multiple types
 
 ]]
 
 -- This table contains the equivalent Typed types of
 -- supported Lua types by Typed
-local _LTypes = {
+local LTypes = {
   ["string"]   = "@Str",
   ["number"]   = "@Num",
   ["boolean"]  = "@Bool",
@@ -26,7 +26,7 @@ local _LTypes = {
 }
 
 -- Same as the above table, but the inverse
-local _TTypes = {
+local STypes = {
   -- Single types
   ["@Str"]    = "string",
   ["@Num"]    = "number",
@@ -56,10 +56,10 @@ local _TTypes = {
 }
 
 -- Registry were Typed store all created values
-local _TReg = {}
+local Reg = {}
 
 -- The Typed class
-local Typed = {}
+local Static = {}
 
 -- Returns the type declaration mode
 local function Parse(Dec)
@@ -80,7 +80,7 @@ local function Parse(Dec)
       return nil
     end
   elseif dt == t then
-    return "Multiple"
+    return "Mixed"
   else
     return nil
   end
@@ -93,25 +93,26 @@ local function Build_Single(T, V)
   assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
 
   assert(
-    type(V) == _TTypes[T],
-    ErrMsg:format(T, _TTypes[T], _LTypes[type(V)], type(V))
+    type(V) == STypes[T],
+    ErrMsg:format(T, STypes[T], LTypes[type(V)], type(V))
   )
 
-  return { _type = _TTypes[T], _val = V, _is = "Single" }
+  return { _type = STypes[T], _val = V, _is = "Single" }
 end
 
 -- Constructs a table for a "Struct" type value
 local function Build_Struct(T, ...)
-  assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
-
   local va = { ... }
-  local struct = { _type = _TTypes[T], _is = "Struct" }
+  local struct = { _type = STypes[T], _is = "Struct" }
+
+  assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
+  assert(#va > 0)
 
   if #va == 1 then
     assert(type(va[1]) == "table")
 
     for k, v in pairs(va[1]) do
-      assert(type(v) == _TTypes[T], "Key/index '" .. k .. "' don't match the type " .. T)
+      assert(type(v) == STypes[T], "Key/index '" .. k .. "' don't match the type " .. T)
     end
 
     struct._val = va[1]
@@ -119,7 +120,7 @@ local function Build_Struct(T, ...)
     struct._val = {}
 
     for i, v in ipairs(va) do
-      assert(type(v) == _TTypes[T], "Key/index '" .. i .. "' don't match the type " .. T)
+      assert(type(v) == STypes[T], "Key/index '" .. i .. "' don't match the type " .. T)
       table.insert(struct._val, v)
     end
   end
@@ -132,41 +133,46 @@ local function Build_Return(T, F, ...)
   assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
   assert(type(F) == "function", "Bad argument #2, function expected, got " .. type(F))
 
-  local ret = { _type = _TTypes[T], _is = "Return" }
-  local Ok, Val = pcall(F, ...)
+  local ret = { _type = STypes[T], _is = "Return" }
+  local Val = { pcall(F, ...) }
+  local Ok  = table.remove(Val, 1)
 
   assert(Ok, "Something's went wrong calling the function!")
-  assert(
-    Ok and type(Val) == _TTypes[T],
-    "Type returned don't match type " .. T
-  )
+  assert(#Val > 0, "Function must return at least 1 value")
+
+  for i, v in ipairs(Val) do
+    assert(
+      type(v) == STypes[T],
+      "One or more returned value(s) don't match type " .. T
+    )
+  end
 
   ret._val = F
   return ret
 end
 
--- Constructs a table for a "Multiple" type value
-local function Build_Multiple(Types, ...)
+-- Constructs a table for a "Mixed" type value
+local function Build_Mixed(Types, ...)
   local temp
   local va    = { ... }
   local match = false
-  local multi = { _type = Types, _is = "Multiple" }
+  local multi = { _type = Types, _is = "Mixed" }
 
   for _, t in ipairs(Types) do
-    if Parse(t) == "Single" and type(va[1]) == _TTypes[t] then
+    if Parse(t) == "Single" and type(va[1]) == STypes[t] then
       temp  = Build_Single(t, va[1])
       match = true
       break
-    elseif Parse(t) == "Struct" then
-      temp  = Build_Struct(t, va[1])
+    elseif Parse(t) == "Struct" and ((type(va[1]) == "table" and #va == 1) or #va > 1) then
+      temp  = Build_Struct(t, ...)
       match = true
       break
-    elseif Parse(t) == "Return" then
+    elseif Parse(t) == "Return" and type(va[1]) == "function" then
       temp  = Build_Return(t, table.remove(va, 1), Unpack(va))
       match = true
       break
-    elseif Parse(t) == "Multiple" and type(va[1]) == _TTypes[t] then
-      temp  = Build_Multiple(t, va[1])
+    elseif Parse(t) == "Mixed" then
+      temp  = Build_Mixed(t, ...)
       match = true
       break
     end
@@ -174,10 +180,11 @@ local function Build_Multiple(Types, ...)
 
   assert(match, "Typed:new [ERROR] => Value don't match with any of specified types")
   multi._val = temp._val
+  temp       = nil
   return multi
 end
 
-function Typed:new(Dec, Key, ...)
+function Static:new(Dec, Key, ...)
   local va = { ... }
 
   -- Some type checking
@@ -196,108 +203,55 @@ function Typed:new(Dec, Key, ...)
     "Bad argument #2 for Typed:new, string expected, got " .. type(Key)
   )
 
-  assert(not _TReg[Key], "Key '" .. Key .. "' already's exists (in Typed:new)")
+  assert(not Reg[Key], "Key '" .. Key .. "' already's exists (in Typed:new)")
   -- End type checking
 
   if Parse(Dec) == "Single" then
-    _TReg[Key] = Build_Single(Dec, va[1])
+    Reg[Key] = Build_Single(Dec, va[1])
   elseif Parse(Dec) == "Struct" then
-    _TReg[Key] = Build_Struct(Dec, ...)
+    Reg[Key] = Build_Struct(Dec, ...)
   elseif Parse(Dec) == "Return" then
-    local fn   = table.remove(va, 1)
-    _TReg[Key] = Build_Return(Dec, fn, Unpack(va))
-  elseif Parse(Dec) == "Multiple" then
-    _TReg[Key] = Build_Multiple(Dec, va[1])
+    Reg[Key] = Build_Return(Dec, table.remove(va, 1), Unpack(va))
+  elseif Parse(Dec) == "Mixed" then
+    Reg[Key] = Build_Mixed(Dec, ...)
   else
     return error("Typed:new [ERROR] => Bad type declaration: " .. Dec)
   end
 end
 
-function Typed:get(Key)
-  assert(_TReg[Key], "Key '" .. Key .. "' doesn't exists")
-  return _TReg[Key]._val
+function Static:get(Key)
+  assert(Reg[Key], "Key '" .. Key .. "' doesn't exists")
+  return Reg[Key]._val
 end
 
-function Typed:set(Key, ...)
+function Static:set(Key, ...)
+  local temp
   local va = { ... }
-  assert(_TReg[Key], "Key '" .. Key .. "' doesn't exists")
+  assert(Reg[Key], "Key '" .. Key .. "' doesn't exists")
 
-  if _TReg[Key]._is == "Single" then
-    assert(type(va[1]) == _TReg[Key]._type, "ª")
-    _TReg[Key]._val = va[1]
-
-  elseif _TReg[Key]._is == "Struct" then
-    if #va == 1 then
-      assert(type(va[1]) == "table")
-
-      for k, v in pairs(va[1]) do
-        assert(
-          type(v) == _TReg[Key]._type,
-          "Key/index '" .. k .. "' don't match the type " .. _LTypes[_TReg[Key]._type]
-        )
-      end
-
-      _TReg[Key]._val = va[1]
-    else
-      _TReg[Key]._val = {}
-
-      for i, v in ipairs(va) do
-        assert(
-          type(v) == _TReg[Key]._type,
-          "Key/index '" .. i .. "' don't match the type " .. _LTypes[_TReg[Key]._type]
-        )
-
-        table.insert(_TReg[Key]._val, v)
-      end
-    end
-
-  elseif _TReg[Key]._is == "Return" then
-    assert(type(va[1]) == "function", "Bad argument #2, function expected, got " .. _LTypes[type(va[1])])
-
-    local fn      = table.remove(va, 1)
-    local ok, ret = pcall(fn, Unpack(va))
-
-    assert(ok, "Something's went wrong calling the function!")
-    assert(
-      ok and type(ret) == _TReg[Key]._type,
-      "Type returned don't match type " .. _LTypes[_TReg[Key]._type]
-    )
-
-    _TReg[Key]._val = fn
-
-  elseif _TReg[Key]._is == "Multiple" then
-    local match = false
-    local temp
-
-    for _, t in ipairs(_TReg[Key]._type) do
-      if Parse(t) == "Single" then
-        temp  = Build_Single(t, va[1])
-        match = true
-        break
-      elseif Parse(t) == "Struct" then
-        temp  = Build_Struct(t, ...)
-        match = true
-        break
-      elseif Parse(t) == "Return" then
-        temp  = Build_Return(t, table.remove(va, 1), Unpack(va))
-        match = true
-        break
-      elseif Parse(t) == "Multiple"then
-        temp  = Build_Multiple(t, ...)
-        match = true
-        break
-      end
-    end
-
-    assert(match, "Typed:new [ERROR] => Value don't match with any of specified types")
-    _TReg[Key]._val = temp._val
+  if Reg[Key]._is == "Single" then
+    temp = Build_Single(LTypes[Reg[Key]._type], va[1])
+    Reg[Key]._val = temp._val
+    temp = nil
+  elseif Reg[Key]._is == "Struct" then
+    temp = Build_Struct(LTypes[Reg[Key]._type], ...)
+    Reg[Key]._val = temp._val
+    temp = nil
+  elseif Reg[Key]._is == "Return" then
+    temp = Build_Return(LTypes[Reg[Key]._type], table.remove(va, 1), Unpack(va))
+    Reg[Key]._val = temp._val
+    temp = nil
+  elseif Reg[Key]._is == "Mixed" then
+    temp = Build_Mixed(Reg[Key]._type, ...)
+    Reg[Key]._val = temp._val
+    temp = nil
   end
 end
 
-Typed = SetMT(Typed, {
-  __call     = Typed.new,
-  __index    = Typed.get,
-  __newindex = Typed.set
+Static = SetMT(Static, {
+  __call     = Static.new,
+  __index    = Static.get,
+  __newindex = Static.set
 })
 
-return Typed
+return Static
