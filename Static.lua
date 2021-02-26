@@ -2,20 +2,36 @@ local SetMT  = setmetatable
 local GetMT  = getmetatable
 local Unpack = table.unpack or unpack
 
---local ErrMsg = {}
+local Err = {
+  Basic = "Static [ERROR]: Type mismatch, %s expected, got %s",
+  New = {
+    "Static [ERROR]: Bad argument #1, @Table or @Str expected, got %s",
+    "Static [ERROR]: Length of argument #1 is 0",
+    "Static [ERROR]: @Nil type isn't supported",
+    "Static [ERROR]: Bad argument #2, @Str expected, got %s",
+    "Static [ERROR]: '%s' already exists",
+    "Static [ERROR]: Bad argument #1, erroneous type declaration"
+  },
+  Key = "Static [ERROR]: '%s' doesn't exists",
+  Args = "Static [ERROR]: No arguments",
+  Struct = {
+    "Static [ERROR]: Bad argument #2, @Table expected, got %s",
+    "Static [ERROR]: Key/index '%s' don't match the type %s"
+  },
+  Return = {
+    "Static [ERROR]: Bad argument #2, @Func expected, got %s",
+    "Static [ERROR]: Something's went wrong calling the given function",
+    "Static [ERROR]: Function must return at least 1 value",
+    "Static [ERROR]: Returned value #%d don't match the type %s"
+  },
+  Mixed = "Static.lua [ERROR]: Value don't match with any of specified types",
+  VarArgs = "Static.lua [ERROR]: At least 1 argument expected"
+}
 
---[[ Spec:
-
-  [DONE] (Single) @Type   ==> just @Type
-  [DONE] (Struct) @Type{} ==> a table of @Type
-  [DONE] (Return) @Type() ==> a function that returns @Type
-  [DONE] (Mixed)  { ... } ==> can be multiple types
-
-]]
-
--- This table contains the equivalent Typed types of
--- supported Lua types by Typed
+-- This table contains the equivalent "Static" types of
+-- supported Lua types by "Static"
 local LTypes = {
+  ["nil"]      = "@Nil",
   ["string"]   = "@Str",
   ["number"]   = "@Num",
   ["boolean"]  = "@Bool",
@@ -25,9 +41,9 @@ local LTypes = {
   ["thread"]   = "@Thread"
 }
 
--- Same as the above table, but the inverse
+-- Same as the above table, but inversed
 local STypes = {
-  -- Single types
+  -- Basic types
   ["@Str"]    = "string",
   ["@Num"]    = "number",
   ["@Bool"]   = "boolean",
@@ -35,7 +51,6 @@ local STypes = {
   ["@Func"]   = "function",
   ["@Table"]  = "table",
   ["@Thread"] = "thread",
-
   -- Struct types
   ["@Str{}"]    = "string",
   ["@Num{}"]    = "number",
@@ -44,7 +59,6 @@ local STypes = {
   ["@Func{}"]   = "function",
   ["@Table{}"]  = "table",
   ["@Thread{}"] = "thread",
-
   -- Return types
   ["@Str()"]    = "string",
   ["@Num()"]    = "number",
@@ -58,20 +72,18 @@ local STypes = {
 -- Registry were Typed store all created values
 local Reg = {}
 
--- The Typed class
+-- The Static class
 local Static = {}
 
 -- Returns the type declaration mode
 local function Parse(Dec)
-  local Single = "^ *@%a+ *$"
+  local Basic  = "^ *@%a+ *$"
   local Struct = "^ *@%a+ *%{ *%} *$"
   local Return = "^ *@%a+ *%( *%) *$"
 
-  local dt, s, t = type(Dec), "string", "table"
-
-  if dt == s then
-    if Dec:match(Single) then
-      return "Single"
+  if type(Dec) == "string" then
+    if Dec:match(Basic) then
+      return "Basic"
     elseif Dec:match(Struct) then
       return "Struct"
     elseif Dec:match(Return) then
@@ -79,40 +91,30 @@ local function Parse(Dec)
     else
       return nil
     end
-  elseif dt == t then
+  elseif type(Dec) == "table" then
     return "Mixed"
   else
     return nil
   end
 end
 
--- Constructs a table for a "Single" type value
-local function Build_Single(T, V)
-  local ErrMsg = "Typed:new [ERROR] => Type mismatch, %s (%s) expected, got %s (%s)"
-
-  assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
-
-  assert(
-    type(V) == STypes[T],
-    ErrMsg:format(T, STypes[T], LTypes[type(V)], type(V))
-  )
-
-  return { _type = STypes[T], _val = V, _is = "Single" }
+-- Constructs a table for a "Basic" type value
+local function Build_Basic(T, V)
+  assert(type(V) == STypes[T], Err.Basic:format(T, LTypes[type(V)]))
+  return { _type = STypes[T], _val = V, _is = "Basic" }
 end
 
 -- Constructs a table for a "Struct" type value
 local function Build_Struct(T, ...)
   local va = { ... }
   local struct = { _type = STypes[T], _is = "Struct" }
-
-  assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
-  assert(#va > 0)
+  assert(#va > 0, Err.Args)
 
   if #va == 1 then
-    assert(type(va[1]) == "table")
+    assert(type(va[1]) == "table", Err.Struct[1]:format(LTypes[type(va[1])]))
 
     for k, v in pairs(va[1]) do
-      assert(type(v) == STypes[T], "Key/index '" .. k .. "' don't match the type " .. T)
+      assert(type(v) == STypes[T], Err.Struct[2]:format(k, T))
     end
 
     struct._val = va[1]
@@ -120,7 +122,7 @@ local function Build_Struct(T, ...)
     struct._val = {}
 
     for i, v in ipairs(va) do
-      assert(type(v) == STypes[T], "Key/index '" .. i .. "' don't match the type " .. T)
+      assert(type(v) == STypes[T], Err.Struct[2]:format(i, T))
       table.insert(struct._val, v)
     end
   end
@@ -130,21 +132,17 @@ end
 
 -- Constructs a table for a "Return" type value
 local function Build_Return(T, F, ...)
-  assert(type(T) == "string", "Bad argument #1, string expected, got " .. type(T))
-  assert(type(F) == "function", "Bad argument #2, function expected, got " .. type(F))
+  assert(type(F) == "function", Err.Return[1]:format(LTypes[type(F)]))
 
   local ret = { _type = STypes[T], _is = "Return" }
   local Val = { pcall(F, ...) }
   local Ok  = table.remove(Val, 1)
 
-  assert(Ok, "Something's went wrong calling the function!")
-  assert(#Val > 0, "Function must return at least 1 value")
+  assert(Ok, Err.Return[2])
+  assert(#Val > 0, Err.Return[3])
 
   for i, v in ipairs(Val) do
-    assert(
-      type(v) == STypes[T],
-      "One or more returned value(s) don't match type " .. T
-    )
+    assert(type(v) == STypes[T], Err.Return[4]:format(i, T))
   end
 
   ret._val = F
@@ -159,8 +157,8 @@ local function Build_Mixed(Types, ...)
   local multi = { _type = Types, _is = "Mixed" }
 
   for _, t in ipairs(Types) do
-    if Parse(t) == "Single" and type(va[1]) == STypes[t] then
-      temp  = Build_Single(t, va[1])
+    if Parse(t) == "Basic" and type(va[1]) == STypes[t] then
+      temp  = Build_Basic(t, va[1])
       match = true
       break
     elseif Parse(t) == "Struct" and ((type(va[1]) == "table" and #va == 1) or #va > 1) then
@@ -178,36 +176,25 @@ local function Build_Mixed(Types, ...)
     end
   end
 
-  assert(match, "Typed:new [ERROR] => Value don't match with any of specified types")
+  assert(match, Err.Mixed)
   multi._val = temp._val
   temp       = nil
   return multi
 end
 
+-- Creates and store a new value
 function Static:new(Dec, Key, ...)
   local va = { ... }
 
-  -- Some type checking
-  assert(
-    type(Dec) == "string" or type(Dec) == "table",
-    "Bad argument #1 for Typed:new, table or string expected, got " .. type(Dec)
-  )
+  assert(type(Dec) == "string" or type(Dec) == "table", Err.New[1]:format(LTypes[type(Dec)]))
+  assert(#Dec > 0, Err.New[2])
+  assert(not Dec:match("[Nn]il"), Err.New[3])
+  assert(type(Key) == "string", Err.New[4]:format(LTypes[type(Key)]))
+  assert(not Reg[Key], Err.New[5]:format(Key))
+  assert(#va > 0, Err.VarArgs)
 
-  assert(
-    #Dec > 0,
-    "Argument #1 is given, but length is 0 (in Typed:new)"
-  )
-
-  assert(
-    type(Key) == "string",
-    "Bad argument #2 for Typed:new, string expected, got " .. type(Key)
-  )
-
-  assert(not Reg[Key], "Key '" .. Key .. "' already's exists (in Typed:new)")
-  -- End type checking
-
-  if Parse(Dec) == "Single" then
-    Reg[Key] = Build_Single(Dec, va[1])
+  if Parse(Dec) == "Basic" then
+    Reg[Key] = Build_Basic(Dec, va[1])
   elseif Parse(Dec) == "Struct" then
     Reg[Key] = Build_Struct(Dec, ...)
   elseif Parse(Dec) == "Return" then
@@ -215,22 +202,25 @@ function Static:new(Dec, Key, ...)
   elseif Parse(Dec) == "Mixed" then
     Reg[Key] = Build_Mixed(Dec, ...)
   else
-    return error("Typed:new [ERROR] => Bad type declaration: " .. Dec)
+    return error(Err.New[6])
   end
 end
 
+-- Get the value registered with 'Key'
 function Static:get(Key)
-  assert(Reg[Key], "Key '" .. Key .. "' doesn't exists")
+  assert(Reg[Key], Err.Key:format(Key))
   return Reg[Key]._val
 end
 
+-- Set a new value for the registered entry with 'Key'
 function Static:set(Key, ...)
   local temp
   local va = { ... }
-  assert(Reg[Key], "Key '" .. Key .. "' doesn't exists")
+  assert(Reg[Key], Err.Key:format(Key))
+  assert(#va > 0, Err.VarArgs)
 
-  if Reg[Key]._is == "Single" then
-    temp = Build_Single(LTypes[Reg[Key]._type], va[1])
+  if Reg[Key]._is == "Basic" then
+    temp = Build_Basic(LTypes[Reg[Key]._type], va[1])
     Reg[Key]._val = temp._val
     temp = nil
   elseif Reg[Key]._is == "Struct" then
@@ -248,10 +238,8 @@ function Static:set(Key, ...)
   end
 end
 
-Static = SetMT(Static, {
+return SetMT(Static, {
   __call     = Static.new,
   __index    = Static.get,
   __newindex = Static.set
 })
-
-return Static
