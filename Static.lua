@@ -17,7 +17,8 @@ local Err = {
   Args = "Static [ERROR]: No arguments",
   Struct = {
     "Static [ERROR]: Bad argument #2, @Table expected, got %s",
-    "Static [ERROR]: Key/index '%s' don't match the type %s"
+    "Static [ERROR]: Key/index '%s' don't match the type %s",
+    "Static [ERROR]: Trying to set a %s into a table of type %s"
   },
   Return = {
     "Static [ERROR]: Bad argument #2, @Func expected, got %s",
@@ -128,6 +129,13 @@ local function Build_Struct(T, ...)
     end
   end
 
+  struct._val = SetMT(struct._val, {
+    __newindex = function (s, k, v)
+      assert(type(v) == struct._type, Err.Struct[3]:format(LTypes[type(v)], LTypes[struct._type]))
+      rawset(s, k, v)
+    end
+  })
+
   return struct
 end
 
@@ -155,14 +163,15 @@ local function Build_Mixed(Types, ...)
   local temp
   local va    = { ... }
   local match = false
-  local multi = { _type = Types, _is = "Mixed" }
+  local mixed = { _type = Types, _is = "Mixed" }
+  local cond  = ((type(va[1]) == "table" and #va == 1) or #va > 1)
 
   for _, t in ipairs(Types) do
     if Parse(t) == "Basic" and type(va[1]) == STypes[t] then
       temp  = Build_Basic(t, va[1])
       match = true
       break
-    elseif Parse(t) == "Struct" and ((type(va[1]) == "table" and #va == 1) or #va > 1) then
+    elseif Parse(t) == "Struct" and cond then
       temp  = Build_Struct(t, ...)
       match = true
       break
@@ -178,9 +187,9 @@ local function Build_Mixed(Types, ...)
   end
 
   assert(match, Err.Mixed)
-  multi._val = temp._val
+  mixed._val = temp._val
   temp       = nil
-  return multi
+  return mixed
 end
 
 -- Creates and store a new value
@@ -189,7 +198,7 @@ function Static:new(Dec, Key, ...)
 
   assert(type(Dec) == "string" or type(Dec) == "table", Err.New[1]:format(LTypes[type(Dec)]))
   assert(#Dec > 0, Err.New[2])
-  assert(not Dec:match("[Nn]il"), Err.New[3])
+  assert((type(Dec) == "string") and not Dec:match("[Nn]il") or true, Err.New[3])
   assert(type(Key) == "string", Err.New[4]:format(LTypes[type(Key)]))
   assert(#Key > 0, Err.New[5])
   assert(not Reg[Key], Err.New[6]:format(Key))
