@@ -14,7 +14,6 @@ local Err = {
     "Static [ERROR]: Bad argument #1, erroneous type declaration"
   },
   Key = "Static [ERROR]: '%s' doesn't exists",
-  Args = "Static [ERROR]: No arguments",
   Struct = {
     "Static [ERROR]: Bad argument #2, @Table expected, got %s",
     "Static [ERROR]: Key/index '%s' don't match the type %s",
@@ -26,8 +25,7 @@ local Err = {
     "Static [ERROR]: Function must return at least 1 value",
     "Static [ERROR]: Returned value #%d don't match the type %s"
   },
-  Mixed = "Static.lua [ERROR]: Value don't match with any of specified types",
-  VarArgs = "Static.lua [ERROR]: At least 1 argument expected"
+  Mixed = "Static.lua [ERROR]: Something went wrong, please check the value that you're trying to set."
 }
 
 -- This table contains the equivalent "Static" types of
@@ -107,29 +105,16 @@ local function Build_Basic(T, V)
 end
 
 -- Constructs a table for a "Struct" type value
-local function Build_Struct(T, ...)
-  local va = { ... }
+local function Build_Struct(T, Val)
   local struct = { _type = STypes[T], _is = "Struct" }
-  assert(#va > 0, Err.Args)
+  assert(type(Val) == "table", Err.Struct[1]:format(LTypes[type(Val)]))
 
-  if #va == 1 then
-    assert(type(va[1]) == "table", Err.Struct[1]:format(LTypes[type(va[1])]))
-
-    for k, v in pairs(va[1]) do
-      assert(type(v) == STypes[T], Err.Struct[2]:format(k, T))
-    end
-
-    struct._val = va[1]
-  else
-    struct._val = {}
-
-    for i, v in ipairs(va) do
-      assert(type(v) == STypes[T], Err.Struct[2]:format(i, T))
-      table.insert(struct._val, v)
-    end
+  for k, v in pairs(Val) do
+    assert(type(v) == STypes[T], Err.Struct[2]:format(k, T))
   end
 
-  struct._val = SetMT(struct._val, {
+  struct._val = Val
+  SetMT(struct._val, {
     __newindex = function (s, k, v)
       assert(type(v) == struct._type, Err.Struct[3]:format(LTypes[type(v)], LTypes[struct._type]))
       rawset(s, k, v)
@@ -140,11 +125,11 @@ local function Build_Struct(T, ...)
 end
 
 -- Constructs a table for a "Return" type value
-local function Build_Return(T, F, ...)
-  assert(type(F) == "function", Err.Return[1]:format(LTypes[type(F)]))
+local function Build_Return(T, Fn, ...)
+  assert(type(Fn) == "function", Err.Return[1]:format(LTypes[type(Fn)]))
 
   local ret = { _type = STypes[T], _is = "Return" }
-  local Val = { pcall(F, ...) }
+  local Val = { pcall(Fn, ...) }
   local Ok  = table.remove(Val, 1)
 
   assert(Ok, Err.Return[2])
@@ -154,35 +139,45 @@ local function Build_Return(T, F, ...)
     assert(type(v) == STypes[T], Err.Return[4]:format(i, T))
   end
 
-  ret._val = F
+  ret._val = Fn
   return ret
 end
 
 -- Constructs a table for a "Mixed" type value
-local function Build_Mixed(Types, ...)
-  local temp
-  local va    = { ... }
+local function Build_Mixed(Types, Val, ...)
+  local temp, ok
   local match = false
   local mixed = { _type = Types, _is = "Mixed" }
-  local cond  = ((type(va[1]) == "table" and #va == 1) or #va > 1)
 
   for _, t in ipairs(Types) do
-    if Parse(t) == "Basic" and type(va[1]) == STypes[t] then
-      temp  = Build_Basic(t, va[1])
-      match = true
-      break
-    elseif Parse(t) == "Struct" and cond then
-      temp  = Build_Struct(t, ...)
-      match = true
-      break
-    elseif Parse(t) == "Return" and type(va[1]) == "function" then
-      temp  = Build_Return(t, table.remove(va, 1), Unpack(va))
-      match = true
-      break
+    if Parse(t) == "Basic" then
+      ok, temp = pcall(Build_Basic, t, Val)
+
+      if ok then
+        match = true
+        break
+      end
+    elseif Parse(t) == "Struct" then
+      ok, temp = pcall(Build_Struct, t, Val)
+
+      if ok then
+        match = true
+        break
+      end
+    elseif Parse(t) == "Return" then
+      ok, temp = pcall(Build_Return, t, Val, ...)
+
+      if ok then
+        match = true
+        break
+      end
     elseif Parse(t) == "Mixed" then
-      temp  = Build_Mixed(t, ...)
-      match = true
-      break
+      ok, temp = pcall(Build_Mixed, t, Val, ...)
+
+      if ok then
+        match = true
+        break
+      end
     end
   end
 
@@ -193,25 +188,22 @@ local function Build_Mixed(Types, ...)
 end
 
 -- Creates and store a new value
-function Static:new(Dec, Key, ...)
-  local va = { ... }
-
+function Static:new(Dec, Key, Val, ...)
   assert(type(Dec) == "string" or type(Dec) == "table", Err.New[1]:format(LTypes[type(Dec)]))
   assert(#Dec > 0, Err.New[2])
   assert((type(Dec) == "string") and not Dec:match("[Nn]il") or true, Err.New[3])
   assert(type(Key) == "string", Err.New[4]:format(LTypes[type(Key)]))
   assert(#Key > 0, Err.New[5])
   assert(not Reg[Key], Err.New[6]:format(Key))
-  assert(#va > 0, Err.VarArgs)
 
   if Parse(Dec) == "Basic" then
-    Reg[Key] = Build_Basic(Dec, va[1])
+    Reg[Key] = Build_Basic(Dec, Val)
   elseif Parse(Dec) == "Struct" then
-    Reg[Key] = Build_Struct(Dec, ...)
+    Reg[Key] = Build_Struct(Dec, Val)
   elseif Parse(Dec) == "Return" then
-    Reg[Key] = Build_Return(Dec, table.remove(va, 1), Unpack(va))
+    Reg[Key] = Build_Return(Dec, Val, ...)
   elseif Parse(Dec) == "Mixed" then
-    Reg[Key] = Build_Mixed(Dec, ...)
+    Reg[Key] = Build_Mixed(Dec, Val, ...)
   else
     return error(Err.New[7])
   end
@@ -224,29 +216,25 @@ function Static:get(Key)
 end
 
 -- Set a new value for the registered entry with 'Key'
-function Static:set(Key, ...)
-  local temp
-  local va = { ... }
+function Static:set(Key, Val, ...)
   assert(Reg[Key], Err.Key:format(Key))
-  assert(#va > 0, Err.VarArgs)
+  local temp
 
   if Reg[Key]._is == "Basic" then
-    temp = Build_Basic(LTypes[Reg[Key]._type], va[1])
+    temp = Build_Basic(LTypes[Reg[Key]._type], Val)
     Reg[Key]._val = temp._val
-    temp = nil
   elseif Reg[Key]._is == "Struct" then
-    temp = Build_Struct(LTypes[Reg[Key]._type], ...)
+    temp = Build_Struct(LTypes[Reg[Key]._type], Val)
     Reg[Key]._val = temp._val
-    temp = nil
   elseif Reg[Key]._is == "Return" then
-    temp = Build_Return(LTypes[Reg[Key]._type], table.remove(va, 1), Unpack(va))
+    temp = Build_Return(LTypes[Reg[Key]._type], Val, ...)
     Reg[Key]._val = temp._val
-    temp = nil
   elseif Reg[Key]._is == "Mixed" then
-    temp = Build_Mixed(Reg[Key]._type, ...)
+    temp = Build_Mixed(Reg[Key]._type, Val, ...)
     Reg[Key]._val = temp._val
-    temp = nil
   end
+
+  temp = nil
 end
 
 return SetMT(Static, {
