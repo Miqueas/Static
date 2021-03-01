@@ -105,7 +105,7 @@ This means that the given value (stored as `Mix`) can be both, an string or a nu
 
 ## Examples
 
-__TODO__
+See [Examples.lua](Examples.lua)
 
 ## Limitations
 
