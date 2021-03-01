@@ -27,19 +27,21 @@ Basic static typing support library for Lua.
 
 Static provides a simple and easy to use API, exposing only 3 methods:
 
-  - `new(Dec, Key, ...)`: Creates a new typed value and store it into an internal registry. Arguments:
+  - `new(Dec, Key, Val, ...)`: Creates a new typed value and store it into an internal registry. Arguments:
     - (`string` or `table`) `Dec` The TDM for the given value (see the specification below)
     - (`string`) `Key` An identifier to use for store the given value
-    - `...` Variadic arguments, this is explained in the examples
+    - `Val` The value to store
+    - `...` Variadic arguments, used only in functions returns (if needed)
 
-  - `set(Key, ...)`: Set a new value for the given identifier
+  - `set(Key, Val, ...)`: Set a new value for the given identifier
     - (`string`) `Key` The identifier that you used when created the typed value
-    - `...` Variadic arguments, this is explained in the examples
+    - `Val` The new value to store
+    - `...` Variadic arguments, used only in functions returns (if needed)
 
   - `get(Key)`: Get the value for the given identifier
     - (`string`) `Key` The identifier that you used when created the typed value
 
-## Specification
+### Specification
 
 > This specification tries to give you the knowledge needed to start using Static.
 
@@ -107,7 +109,7 @@ __TODO__
 
 ## Limitations
 
-__TODO__
+See [Limitations.md](Limitations.md)
 
 [LicenseBadge]: https://img.shields.io/badge/License-Zlib-brightgreen?style=for-the-badge
 [LicenseURL]: https://opensource.org/licenses/Zlib
