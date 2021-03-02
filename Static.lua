@@ -13,7 +13,10 @@ local Err = {
     "Static [ERROR]: '%s' already exists",
     "Static [ERROR]: Bad argument #1, erroneous type declaration"
   },
-  Key = "Static [ERROR]: '%s' doesn't exists",
+  Key = {
+    "Static [ERROR]: '%s' doesn't exists",
+    "Static [ERROR]: Bad argument #1, @Str expected got %s"
+  },
   Struct = {
     "Static [ERROR]: Bad argument #2, @Table expected, got %s",
     "Static [ERROR]: Key/index '%s' don't match the type %s",
@@ -100,14 +103,16 @@ end
 
 -- Constructs a table for a "Basic" type value
 local function Build_Basic(T, V)
-  assert(type(V) == STypes[T], Err.Basic:format(T, LTypes[type(V)]))
+  local VT = type(V)
+  assert(VT == STypes[T], Err.Basic:format(T, LTypes[VT]))
   return { _type = STypes[T], _val = V, _is = "Basic" }
 end
 
 -- Constructs a table for a "Struct" type value
 local function Build_Struct(T, Val)
   local struct = { _type = STypes[T], _is = "Struct" }
-  assert(type(Val) == "table", Err.Struct[1]:format(LTypes[type(Val)]))
+  local ValT = type(Val)
+  assert(ValT == "table", Err.Struct[1]:format(LTypes[ValT]))
 
   for k, v in pairs(Val) do
     assert(type(v) == STypes[T], Err.Struct[2]:format(k, T))
@@ -116,7 +121,8 @@ local function Build_Struct(T, Val)
   struct._val = Val
   SetMT(struct._val, {
     __newindex = function (s, k, v)
-      assert(type(v) == struct._type, Err.Struct[3]:format(LTypes[type(v)], LTypes[struct._type]))
+      local vt = type(v)
+      assert(vt == struct._type, Err.Struct[3]:format(LTypes[vt], LTypes[struct._type]))
       rawset(s, k, v)
     end
   })
@@ -126,7 +132,8 @@ end
 
 -- Constructs a table for a "Return" type value
 local function Build_Return(T, Fn, ...)
-  assert(type(Fn) == "function", Err.Return[1]:format(LTypes[type(Fn)]))
+  local FnT = type(Fn)
+  assert(FnT == "function", Err.Return[1]:format(LTypes[FnT]))
 
   local ret = { _type = STypes[T], _is = "Return" }
   local Val = { pcall(Fn, ...) }
@@ -189,10 +196,11 @@ end
 
 -- Creates and store a new value
 function Static:new(Dec, Key, Val, ...)
-  assert(type(Dec) == "string" or type(Dec) == "table", Err.New[1]:format(LTypes[type(Dec)]))
+  local DecT, KeyT = type(Dec), type(Key)
+  assert(DecT == "string" or DecT == "table", Err.New[1]:format(LTypes[DecT]))
   assert(#Dec > 0, Err.New[2])
-  assert((type(Dec) == "string") and not Dec:match("[Nn]il") or true, Err.New[3])
-  assert(type(Key) == "string", Err.New[4]:format(LTypes[type(Key)]))
+  assert((DecT == "string") and not Dec:match("[Nn]il") or true, Err.New[3])
+  assert(KeyT == "string", Err.New[4]:format(LTypes[KeyT]))
   assert(#Key > 0, Err.New[5])
   assert(not Reg[Key], Err.New[6]:format(Key))
 
@@ -211,13 +219,17 @@ end
 
 -- Get the value registered with 'Key'
 function Static:get(Key)
-  assert(Reg[Key], Err.Key:format(Key))
+  local KeyT = type(Key)
+  assert(KeyT == "string", Err.Key[2]:format(LTypes[KeyT]))
+  assert(Reg[Key], Err.Key[1]:format(Key))
   return Reg[Key]._val
 end
 
 -- Set a new value for the registered entry with 'Key'
 function Static:set(Key, Val, ...)
-  assert(Reg[Key], Err.Key:format(Key))
+  local KeyT = type(Key)
+  assert(KeyT == "string", Err.Key[2]:format(LTypes[KeyT]))
+  assert(Reg[Key], Err.Key[1]:format(Key))
   local temp
 
   if Reg[Key]._is == "Basic" then
@@ -237,41 +249,37 @@ function Static:set(Key, Val, ...)
   temp = nil
 end
 
-SetMT(Static, {
-  __call     = Static.new,
-  __index    = Static.get,
-  __newindex = Static.set
-})
+local Fake = {
+  Reg = {},
 
-return {
+  new = function (self, Dec, Key, Val)
+    assert(#Key > 0, Err.New[5])
+    assert(not self.Reg[Key], Err.New[6]:format(Key))
+    self.Reg[Key] = Val
+  end,
+
+  get = function (self, Key)
+    assert(self.Reg[Key], Err.Key[1]:format(Key))
+    return self.Reg[Key]
+  end,
+
+  set = function (self, Key, Val, ...)
+    assert(self.Reg[Key], Err.Key[1]:format(Key))
+    self.Reg[Key] = Val
+  end
+}
+
+local Setup = {
   setup = function (Dev)
     assert(type(Dev) == "boolean")
 
     if Dev then
-      return Static
+      return SetMT(Static, {
+        __call     = Static.new,
+        __index    = Static.get,
+        __newindex = Static.set
+      })
     else
-      local Fake = {
-        Reg = {},
-
-        new = function (self, Dec, Key, Val)
-          assert(type(Key) == "string")
-          assert(not self.Reg[Key])
-          self.Reg[Key] = Val
-        end,
-
-        get = function (self, Key)
-          assert(type(Key) == "string")
-          assert(self.Reg[Key])
-          return self.Reg[Key]
-        end,
-
-        set = function (self, Key, Val, ...)
-          assert(type(Key) == "string")
-          assert(self.Reg[Key])
-          self.Reg[Key] = Val
-        end
-      }
-
       return SetMT(Fake, {
         __call     = Fake.new,
         __index    = Fake.get,
@@ -280,3 +288,5 @@ return {
     end
   end
 }
+
+return Setup
