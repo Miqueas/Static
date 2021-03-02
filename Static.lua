@@ -237,8 +237,40 @@ function Static:set(Key, Val, ...)
   temp = nil
 end
 
-return SetMT(Static, {
+SetMT(Static, {
   __call     = Static.new,
   __index    = Static.get,
   __newindex = Static.set
 })
+
+return {
+  devel = function (Dev)
+    assert(type(Dev) == "boolean")
+
+    if Dev then
+      return Static
+    else
+      local Fake = {
+        Reg = {},
+
+        new = function (self, Dec, Key, Val)
+          assert(type(Key) == "string")
+          assert(not self.Reg[Key])
+          self.Reg[Key] = Val
+        end,
+
+        get = function (self, Key)
+          assert(type(Key) == "string")
+          assert(self.Reg[Key])
+          return self.Reg[Key]
+        end,
+
+        set = function (self, Key, Val, ...)
+          assert(type(Key) == "string")
+          assert(self.Reg[Key])
+          self.Reg[Key] = Val
+        end
+      }
+    end
+  end
+}

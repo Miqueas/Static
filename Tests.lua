@@ -1,4 +1,4 @@
-local Static = require("Static")
+local Static = require("Static").devel(true)
 local Unp    = table.unpack or unpack
 
 function Fn() end
