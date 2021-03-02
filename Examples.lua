@@ -1,4 +1,4 @@
-local Static = require("Static")
+local Static = require("Static").setup(true)
 local Unp    = table.unpack or unpack
 
 -- Creates some values

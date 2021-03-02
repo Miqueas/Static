@@ -15,6 +15,7 @@ Basic static typing support library for Lua.
   	- [Mixed](#mixed)
   - [Examples](#examples)
   - [Limitations](#limitations)
+  - [Thanks](#thanks)
 
 ## Features
 
@@ -25,7 +26,15 @@ Basic static typing support library for Lua.
 
 ## Documentation
 
-Static provides a simple and easy to use API, exposing only 3 methods:
+Static uses metatables and the `type()` function to work, so, this means that can be slow because metatables are an abstraccion layer and `type()` is slow by default. This can be a problem, so, to solve it, Static provides a `setup()` function, that is called when you load Static:
+
+```lua
+local Static = require("Static").setup(true)
+```
+
+Call this function is mandatory and basically what it does is enable or disable type checking using `true` or `false` respectivelly. This allows you to increase performance when the user runs your app disabling type checking, but in development, you're still using static typing.
+
+Having said that, Static provides a simple and easy to use API, exposing only 3 methods:
 
   - `new(Dec, Key, Val, ...)`: Creates a new typed value and store it into an internal registry. Arguments:
     - (`string` or `table`) `Dec` The TDM for the given value (see the specification below)
@@ -40,6 +49,14 @@ Static provides a simple and easy to use API, exposing only 3 methods:
 
   - `get(Key)`: Get the value for the given identifier
     - (`string`) `Key` The identifier that you used when created the typed value
+
+As I said before, Static uses metatables, so... You can:
+
+  - Call: `Static(...)`. This is the same has `Static:new(...)`
+  - Index: `Static.something`. This is the same has `Static:get("something")`
+  - Set: `Static.something = "ª"`. This is the same has `Static:set("something", "ª")`
+
+Learn more about that in the [Examples](#examples) section
 
 ### Specification
 
@@ -110,6 +127,10 @@ See [Examples.lua](Examples.lua)
 ## Limitations
 
 See [Limitations.md](Limitations.md)
+
+## Thanks
+
+To @darltrash for helping me to implement the `setup()` function and the idea itself.
 
 [LicenseBadge]: https://img.shields.io/badge/License-Zlib-brightgreen?style=for-the-badge
 [LicenseURL]: https://opensource.org/licenses/Zlib
