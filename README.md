@@ -26,15 +26,15 @@ Basic static typing support library for Lua.
 
 ## Documentation
 
-Static uses metatables and the `type()` function to work, so, this means that can be slow because metatables are an abstraccion layer and `type()` is slow by default. This can be a problem, so, to solve it, Static provides a `setup()` function, that is called when you load Static:
+Static uses metatables and the `type()` function to work, this can cause overhead because metatables and `type()` are slow by default so to solve it, Static provides a `setup()` function that is called when you load Static:
 
 ```lua
 local Static = require("Static").setup(true)
 ```
 
-Call this function is mandatory and basically what it does is enable or disable type checking using `true` or `false` respectivelly. This allows you to increase performance when the user runs your app disabling type checking, but in development, you're still using static typing.
+Calling this function is mandatory and it enables or disables type checking using `true` or `false` respectivelly. This allows you to increase performance when shipping your app since you can deactivate the library as a whole, but still being able to typecheck on your side
 
-Having said that, Static provides a simple and easy to use API, exposing only 3 methods:
+That said, Static provides a simple and easy to use API, exposing only 3 methods:
 
   - `new(Dec, Key, Val, ...)`: Creates a new typed value and store it into an internal registry. Arguments:
     - (`string` or `table`) `Dec` The TDM for the given value (see the specification below)
@@ -50,19 +50,19 @@ Having said that, Static provides a simple and easy to use API, exposing only 3 
   - `get(Key)`: Get the value for the given identifier
     - (`string`) `Key` The identifier that you used when created the typed value
 
-As I said before, Static uses metatables, so... You can:
+As I said before, Static uses metatables, so you can:
 
-  - Call: `Static(...)`. This is the same has `Static:new(...)`
-  - Index: `Static.something`. This is the same has `Static:get("something")`
-  - Set: `Static.something = "ª"`. This is the same has `Static:set("something", "ª")`
+  - Call: `Static(...)`. This is the same as `Static:new(...)`
+  - Index: `Static.something`. This is the same as `Static:get("something")`
+  - Set: `Static.something = "ª"`. This is the same as `Static:set("something", "ª")`
 
-Learn more about that in the [Examples](#examples) section
+Learn more in the [Examples](#examples) section
 
 ### Specification
 
 > This specification tries to give you the knowledge needed to start using Static.
 
-All types in Static starts with a `@` ("at") symbol and is inmediatelly followed by a name in [Capital Case][Capitalization]. This is for try to remarks a bit more the TDM and helps you to think something like *"Oh, this is a Static type, because starts with the `@` symbol, isn't a 'regular' string!"*. The following table has all the supported types:
+All types in Static start with a `@` symbol and it's inmediatelly followed by a name in [Capital Case][Capitalization]. This is to attempt highlighting the TDM and helps you not confuse things up, like *"Oh, this is a Static type, because starts with the `@` symbol unlike a 'regular' type!"*. The following table contains all the supported types:
 
 | Static    | Lua        |
 |:----------|:-----------|
@@ -74,13 +74,13 @@ All types in Static starts with a `@` ("at") symbol and is inmediatelly followed
 | `@Table`  | `table`    |
 | `@Thread` | `thread`   |
 
-Note that if you don't use the exact Static type name, then that may result in unexpected behaviors, because Static don't make intese analysis of it.
+Note that if you don't use the exact Static type name, it may result in unexpected behaviours because Static don't make an intense analysis of it.
 
-That's all about types in general, but you may think *"What the heck is 'TDM'?"*... Well, basically means "Type Declaration Mode" and is very important, because is the way in how Static works. Currently, Static supports only 4 TDM's (*Basic*, *Struct*, *Return* and *Mixed*), see them below.
+That's all about types in general, but you may think *"What the heck is a 'TDM'?"*... Well, basically means "Type Declaration Mode" and it is very important, because it's the way of how Static works. Currently, Static supports only 4 TDMs (*Basic*, *Struct*, *Return* and *Mixed*), see them below.
 
 #### Basic
 
-A value that can be only the specified type. This is done with the syntax: `@Type`. Example:
+A value that can be only of the specified type. This is done with the syntax: `@Type`. Example:
 
 ```lua
 Static('@Num', "Num", 0)
@@ -96,11 +96,11 @@ Tables that can have only one value type. This is done with the syntax: `@Type{}
 Static('@Bool{}', "Booleans", { true, false })
 ```
 
-This means that the given table (stored as `Booleans`) can have only boolean values inside.
+This means that the given table (stored as `Booleans`) can only contain boolean values.
 
 #### Return
 
-A function that returns an specified value type. This is done with the syntax: `@Type()`. Example:
+A function that returns a value of a specific type. This is done with the syntax: `@Type()`. Example:
 
 ```lua
 Static('@Table()', "NewTable", function ()
@@ -130,7 +130,7 @@ See [Limitations.md](Limitations.md)
 
 ## Thanks
 
-To @darltrash for helping me to implement the `setup()` function and the idea itself.
+To @darltrash for helping me to implement the `setup()` function, polishing the readme and the idea itself.
 
 [LicenseBadge]: https://img.shields.io/badge/License-Zlib-brightgreen?style=for-the-badge
 [LicenseURL]: https://opensource.org/licenses/Zlib
