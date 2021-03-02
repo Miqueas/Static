@@ -130,8 +130,9 @@ See [Limitations.md](Limitations.md)
 
 ## Thanks
 
-To @darltrash for helping me to implement the `setup()` function, polishing the readme and the idea itself.
+To [@darltrash][darltrash] for helping me to implement the `setup()` function, polishing the readme and the idea itself.
 
 [LicenseBadge]: https://img.shields.io/badge/License-Zlib-brightgreen?style=for-the-badge
 [LicenseURL]: https://opensource.org/licenses/Zlib
 [Capitalization]: https://en.wikipedia.org/wiki/Capitalization
+[darltrash]: https://github.com/darltrash
