@@ -32,9 +32,9 @@ Static uses metatables and the `type()` function to work, this can cause overhea
 local Static = require("Static").setup(true)
 ```
 
-Calling this function is mandatory and basically what it does is to enable or disable type checking using `true` or `false` respectivelly. This allows you to increase performance when the user runs your app by disabling type checking, but in development, you're still being able to use static typing.
+Calling this function is mandatory and it enables or disables type checking using `true` or `false` respectivelly. This allows you to increase performance when shipping your app since you can deactivate the library as a whole, but still being able to typecheck on your side
 
-Having said that, Static provides a simple and easy to use API, exposing only 3 methods:
+That said, Static provides a simple and easy to use API, exposing only 3 methods:
 
   - `new(Dec, Key, Val, ...)`: Creates a new typed value and store it into an internal registry. Arguments:
     - (`string` or `table`) `Dec` The TDM for the given value (see the specification below)
@@ -50,7 +50,7 @@ Having said that, Static provides a simple and easy to use API, exposing only 3 
   - `get(Key)`: Get the value for the given identifier
     - (`string`) `Key` The identifier that you used when created the typed value
 
-As I said before, Static uses metatables, so... You can:
+As I said before, Static uses metatables, so you can:
 
   - Call: `Static(...)`. This is the same as `Static:new(...)`
   - Index: `Static.something`. This is the same as `Static:get("something")`
@@ -62,7 +62,7 @@ Learn more in the [Examples](#examples) section
 
 > This specification tries to give you the knowledge needed to start using Static.
 
-All types in Static start with a `@` symbol and it's inmediatelly followed by a name in [Capital Case][Capitalization]. This is to attempt highlighting the TDM and helps you not confuse things up, like *"Oh, this is a Static type, because starts with the `@` symbol unlike 'regular' type!"*. The following table contains all the supported types:
+All types in Static start with a `@` symbol and it's inmediatelly followed by a name in [Capital Case][Capitalization]. This is to attempt highlighting the TDM and helps you not confuse things up, like *"Oh, this is a Static type, because starts with the `@` symbol unlike a 'regular' type!"*. The following table contains all the supported types:
 
 | Static    | Lua        |
 |:----------|:-----------|
@@ -76,7 +76,7 @@ All types in Static start with a `@` symbol and it's inmediatelly followed by a 
 
 Note that if you don't use the exact Static type name, it may result in unexpected behaviours because Static don't make an intense analysis of it.
 
-That's all about types in general, but you may think *"What the heck is 'TDM'?"*... Well, basically means "Type Declaration Mode" and is very important, because is the way in how Static works. Currently, Static supports only 4 TDM's (*Basic*, *Struct*, *Return* and *Mixed*), see them below.
+That's all about types in general, but you may think *"What the heck is a 'TDM'?"*... Well, basically means "Type Declaration Mode" and it is very important, because it's the way of how Static works. Currently, Static supports only 4 TDMs (*Basic*, *Struct*, *Return* and *Mixed*), see them below.
 
 #### Basic
 
