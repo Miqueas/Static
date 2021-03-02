@@ -244,7 +244,7 @@ SetMT(Static, {
 })
 
 return {
-  devel = function (Dev)
+  setup = function (Dev)
     assert(type(Dev) == "boolean")
 
     if Dev then
@@ -271,6 +271,12 @@ return {
           self.Reg[Key] = Val
         end
       }
+
+      return SetMT(Fake, {
+        __call     = Fake.new,
+        __index    = Fake.get,
+        __newindex = Fake.set
+      })
     end
   end
 }
