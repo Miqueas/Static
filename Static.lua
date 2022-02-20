@@ -249,44 +249,8 @@ function Static:set(Key, Val, ...)
   temp = nil
 end
 
-local Fake = {
-  Reg = {},
-
-  new = function (self, Dec, Key, Val)
-    assert(#Key > 0, Err.New[5])
-    assert(not self.Reg[Key], Err.New[6]:format(Key))
-    self.Reg[Key] = Val
-  end,
-
-  get = function (self, Key)
-    assert(self.Reg[Key], Err.Key[1]:format(Key))
-    return self.Reg[Key]
-  end,
-
-  set = function (self, Key, Val, ...)
-    assert(self.Reg[Key], Err.Key[1]:format(Key))
-    self.Reg[Key] = Val
-  end
-}
-
-local Setup = {
-  setup = function (Dev)
-    assert(type(Dev) == "boolean")
-
-    if Dev then
-      return SetMT(Static, {
-        __call     = Static.new,
-        __index    = Static.get,
-        __newindex = Static.set
-      })
-    else
-      return SetMT(Fake, {
-        __call     = Fake.new,
-        __index    = Fake.get,
-        __newindex = Fake.set
-      })
-    end
-  end
-}
-
-return Setup
+return SetMT(Static, {
+  __call     = Static.new,
+  __index    = Static.get,
+  __newindex = Static.set
+})

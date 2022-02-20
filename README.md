@@ -26,15 +26,7 @@ Basic static typing support library for Lua.
 
 ## Documentation
 
-Static uses metatables and the `type()` function to work, this can cause overhead because metatables and `type()` are slow by default so to solve it, Static provides a `setup()` function that is called when you load Static:
-
-```lua
-local Static = require("Static").setup(true)
-```
-
-Calling this function is mandatory and it enables or disables type checking using `true` or `false` respectivelly. This allows you to increase performance when shipping your app since you can deactivate the library as a whole, but still being able to typecheck on your side
-
-That said, Static provides a simple and easy to use API, exposing only 3 methods:
+Static provides a simple and easy to use API, exposing only 3 methods:
 
   - `new(Dec, Key, Val, ...)`: Creates a new typed value and store it into an internal registry. Arguments:
     - (`string` or `table`) `Dec` The TDM for the given value (see the specification below)
@@ -50,7 +42,7 @@ That said, Static provides a simple and easy to use API, exposing only 3 methods
   - `get(Key)`: Get the value for the given identifier
     - (`string`) `Key` The identifier that you used when created the typed value
 
-As I said before, Static uses metatables, so you can:
+Static uses metatables, so you can:
 
   - Call: `Static(...)`. This is the same as `Static:new(...)`
   - Index: `Static.something`. This is the same as `Static:get("something")`
@@ -130,9 +122,9 @@ See [Limitations.md](Limitations.md)
 
 ## Thanks
 
-To [@darltrash][darltrash] for helping me to implement the `setup()` function, polishing the readme and the idea itself.
+To [@darltrash][darltrash] for polishing the readme and the idea itself.
 
-[LicenseBadge]: https://img.shields.io/badge/License-Zlib-brightgreen?style=for-the-badge
+[LicenseBadge]: https://img.shields.io/badge/License-Zlib-brightgreen?style=flat
 [LicenseURL]: https://opensource.org/licenses/Zlib
 [Capitalization]: https://en.wikipedia.org/wiki/Capitalization
 [darltrash]: https://github.com/darltrash
